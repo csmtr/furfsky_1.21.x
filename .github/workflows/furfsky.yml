@@ -22,7 +22,7 @@ jobs:
       # Download the file
       - name: Download file
         run: |
-          wget -O ${{ github.event.inputs.file_name }} ${{ github.event.inputs.file_url }}
+          wget ${{ github.event.inputs.file_url }}
 
       # Upload the file as an artifact
       - name: Upload file as artifact
