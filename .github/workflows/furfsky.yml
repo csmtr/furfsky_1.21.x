@@ -131,3 +131,18 @@ jobs:
               body: '✅ Successfully processed the zip file! The processed file is available as an artifact in this workflow run: ' +
                     `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
+
+      # Mark the issue as completed by closing it
+      - name: Mark issue as completed
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.issue_number != ''
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issueNumber = ${{ steps.get_issue.outputs.issue_number }};
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              state: 'closed',
+              state_reason: 'completed'
+            });
