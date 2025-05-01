@@ -1,24 +1,107 @@
 name: FurfSky Upgrader
 
 on:
+  # Trigger on new issues or issue comments
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created, edited]
+  # Keep manual trigger option
   workflow_dispatch:
     inputs:
+      issue_number:
+        description: 'Issue number containing the zip file'
+        required: false
       file_url:
-        description: 'URL of the file to download'
-        required: true
+        description: 'Alternative: Direct URL to download file'
+        required: false
 
 jobs:
-  download:
+  process_zip:
     runs-on: ubuntu-latest
+    # Only run if it's a zip upload issue
+    if: |
+      (github.event_name == 'issues' && contains(github.event.issue.title, '[ZIP UPLOAD]')) ||
+      (github.event_name == 'issue_comment' && contains(github.event.issue.title, '[ZIP UPLOAD]')) ||
+      github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      # Download the file
-      - name: Download file
+      - name: Get issue number
+        id: get_issue
         run: |
-          wget -O furfsky_1.21.x.zip ${{ github.event.inputs.file_url }}
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "issue_number=${{ github.event.inputs.issue_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get issue details
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.issue_number != ''
+        id: get_issue_details
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issueNumber = ${{ steps.get_issue.outputs.issue_number }};
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            // Get comments to find attachments
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            // Look for zip file URLs in issue body and comments
+            const bodyMatch = issue.data.body.match(/https:\/\/github.com\/.*\.zip/);
+
+            let zipUrl = null;
+            if (bodyMatch) {
+              zipUrl = bodyMatch[0];
+            } else {
+              // Check comments for attachments
+              for (const comment of comments.data) {
+                const commentMatch = comment.body.match(/https:\/\/github.com\/.*\.zip/);
+                if (commentMatch) {
+                  zipUrl = commentMatch[0];
+                  break;
+                }
+              }
+            }
+
+            if (zipUrl) {
+              core.setOutput('zip_url', zipUrl);
+              return true;
+            } else {
+              core.setFailed('No zip file found in the issue or its comments');
+              return false;
+            }
+
+      - name: Download zip from issue
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.issue_number != ''
+        run: |
+          echo "Downloading zip from issue attachment: ${{ steps.get_issue_details.outputs.zip_url }}"
+          wget -O furfsky_1.21.x.zip "${{ steps.get_issue_details.outputs.zip_url }}"
+
+      - name: Download zip from URL (workflow dispatch option)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.file_url != ''
+        run: |
+          echo "Downloading zip from URL: ${{ github.event.inputs.file_url }}"
+          wget -O furfsky_1.21.x.zip "${{ github.event.inputs.file_url }}"
+
+      - name: Verify download
+        run: |
+          if [[ ! -f "furfsky_1.21.x.zip" ]]; then
+            echo "Error: Failed to download zip file"
+            exit 1
+          fi
+          echo "Successfully downloaded zip file: $(ls -la furfsky_1.21.x.zip)"
 
       # Upload the file as an artifact
       - name: Upload file as artifact
@@ -26,3 +109,18 @@ jobs:
         with:
           name: "furfsky_1.21.x.zip"
           path: ./furfsky_1.21.x.zip
+
+      # Add a comment to the issue
+      - name: Add comment to issue
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.issue_number != ''
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issueNumber = ${{ steps.get_issue.outputs.issue_number }};
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: '✅ Successfully processed the zip file! The processed file is available as an artifact in this workflow run: ' +
+                    `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            });
