@@ -82,8 +82,8 @@ jobs:
             } else {
               core.setFailed('No zip file found in the issue or its comments');
               return false;
-            }      - name: Download zip from issue
-        if: (github.event_name != 'workflow_dispatch' || github.event.inputs.issue_number != '') && steps.get_issue_details.outputs.zip_url != ''
+            }
+      - name: Download zip from issue
         run: |
           echo "Downloading zip from issue attachment: ${{ steps.get_issue_details.outputs.zip_url }}"
           wget -O furfsky_1.21.x.zip "${{ steps.get_issue_details.outputs.zip_url }}"
