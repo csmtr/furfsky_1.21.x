@@ -1,26 +1,23 @@
-name: Download File
+name: FurfSky Upgrader
 
-# Controls when the workflow will run
 on:
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
       file_url:
         description: 'URL of the file to download'
         required: true
-        default: 'https://example.com/file.zip'
       file_name:
         description: 'Name to save the file as'
         required: true
-        default: 'downloaded_file'
+        default: 'furfsky'
 
 jobs:
   download:
     runs-on: ubuntu-latest
 
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
 
       # Download the file
       - name: Download file
@@ -29,7 +26,7 @@ jobs:
 
       # Upload the file as an artifact
       - name: Upload file as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ github.inputs.file_name }}
           path: ./${{ github.inputs.file_name }}
