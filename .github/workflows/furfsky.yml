@@ -6,10 +6,6 @@ on:
       file_url:
         description: 'URL of the file to download'
         required: true
-      file_name:
-        description: 'Name to save the file as'
-        required: true
-        default: 'furfsky_1.21.x.zip'
 
 jobs:
   download:
@@ -22,11 +18,11 @@ jobs:
       # Download the file
       - name: Download file
         run: |
-          wget ${{ github.event.inputs.file_url }}
+          wget -O furfsky_1.21.x.zip ${{ github.event.inputs.file_url }}
 
       # Upload the file as an artifact
       - name: Upload file as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.file_name }}
-          path: ./${{ github.event.inputs.file_name }}
+          name: "furfsky_1.21.x.zip"
+          path: ./furfsky_1.21.x.zip
