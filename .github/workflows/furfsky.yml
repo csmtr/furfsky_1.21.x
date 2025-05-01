@@ -22,11 +22,11 @@ jobs:
       # Download the file
       - name: Download file
         run: |
-          wget -O ${{ github.inputs.file_name }} ${{ github.inputs.file_url }}
+          wget -O ${{ github.event.inputs.file_name }} ${{ github.event.inputs.file_url }}
 
       # Upload the file as an artifact
       - name: Upload file as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.inputs.file_name }}
-          path: ./${{ github.inputs.file_name }}
+          name: ${{ github.event.inputs.file_name }}
+          path: ./${{ github.event.inputs.file_name }}
