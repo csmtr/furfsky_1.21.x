@@ -9,16 +9,17 @@ on:
   # Keep manual trigger option
   workflow_dispatch:
     inputs:
-      issue_number:
-        description: 'Issue number containing the zip file'
-        required: false
       file_url:
         description: 'Alternative: Direct URL to download file'
-        required: false
+        required: true
 
 jobs:
   process_zip:
     runs-on: ubuntu-latest
+    # Add permissions to allow the workflow to interact with issues
+    permissions:
+      contents: read
+      issues: write
     # Always run on workflow_dispatch, or run on issues/comments with [ZIP UPLOAD] in the title
     if: |
       github.event_name == 'workflow_dispatch' ||
