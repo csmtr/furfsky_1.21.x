@@ -9,7 +9,7 @@ on:
       file_name:
         description: 'Name to save the file as'
         required: true
-        default: 'furfsky'
+        default: 'furfsky_1.21.x.zip'
 
 jobs:
   download:
