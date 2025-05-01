@@ -19,11 +19,11 @@ on:
 jobs:
   process_zip:
     runs-on: ubuntu-latest
-    # Only run if it's a zip upload issue
+    # Always run on workflow_dispatch, or run on issues/comments with [ZIP UPLOAD] in the title
     if: |
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issues' && contains(github.event.issue.title, '[ZIP UPLOAD]')) ||
-      (github.event_name == 'issue_comment' && contains(github.event.issue.title, '[ZIP UPLOAD]')) ||
-      github.event_name == 'workflow_dispatch'
+      (github.event_name == 'issue_comment' && contains(github.event.issue.title, '[ZIP UPLOAD]'))
 
     steps:
       - name: Checkout source
@@ -31,6 +31,7 @@ jobs:
 
       - name: Get issue number
         id: get_issue
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.issue_number != ''
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "issue_number=${{ github.event.inputs.issue_number }}" >> $GITHUB_OUTPUT
@@ -81,10 +82,8 @@ jobs:
             } else {
               core.setFailed('No zip file found in the issue or its comments');
               return false;
-            }
-
-      - name: Download zip from issue
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.issue_number != ''
+            }      - name: Download zip from issue
+        if: (github.event_name != 'workflow_dispatch' || github.event.inputs.issue_number != '') && steps.get_issue_details.outputs.zip_url != ''
         run: |
           echo "Downloading zip from issue attachment: ${{ steps.get_issue_details.outputs.zip_url }}"
           wget -O furfsky_1.21.x.zip "${{ steps.get_issue_details.outputs.zip_url }}"
@@ -94,6 +93,13 @@ jobs:
         run: |
           echo "Downloading zip from URL: ${{ github.event.inputs.file_url }}"
           wget -O furfsky_1.21.x.zip "${{ github.event.inputs.file_url }}"
+
+      # Provide helpful error if neither option provided
+      - name: Check for download source
+        if: (github.event_name == 'workflow_dispatch' && github.event.inputs.file_url == '' && github.event.inputs.issue_number == '') || (steps.get_issue_details.outcome == 'failure')
+        run: |
+          echo "::error::No download source provided. Please either provide a file_url or an issue_number when triggering this workflow manually."
+          exit 1
 
       - name: Verify download
         run: |
